@@ -16,6 +16,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-24.04
+    environment: prod
     permissions:
       contents: read
       id-token: write
@@ -27,7 +28,7 @@ jobs:
           identity-id: ${{ secrets.INFISICAL_OIDC_IDENTITY_ID }}
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ vars.INFISICAL_ENV_SLUG || 'prod' }}
-          export-type: env
+          export-type: file
           secret-path: /${{ github.event.repository.name }}
 
       - name: Resolve deploy image ref

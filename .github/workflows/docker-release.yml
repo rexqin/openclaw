@@ -78,6 +78,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      # Required for cache-to: type=gha (default GITHUB_TOKEN cache scope is off when permissions are narrowed).
+      actions: write
     outputs:
       digest: ${{ steps.build.outputs.digest }}
       slim-digest: ${{ steps.build-slim.outputs.digest }}
@@ -206,6 +208,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      actions: write
     outputs:
       digest: ${{ steps.build.outputs.digest }}
       slim-digest: ${{ steps.build-slim.outputs.digest }}
