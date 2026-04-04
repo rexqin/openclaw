@@ -80,6 +80,9 @@ jobs:
       id-token: write
       # Required for cache-to: type=gha (default GITHUB_TOKEN cache scope is off when permissions are narrowed).
       actions: write
+    env:
+      # Writable config dir for buildx/login; avoids EACCES mkdir under ~/.docker on some runners.
+      DOCKER_CONFIG: ${{ github.workspace }}/.docker
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -88,6 +91,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-depth: 0
+
+      - name: Prepare Docker config directory
+        run: mkdir -p "$DOCKER_CONFIG"
 
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
@@ -185,6 +191,8 @@ jobs:
       contents: read
       id-token: write
       actions: write
+    env:
+      DOCKER_CONFIG: ${{ github.workspace }}/.docker
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -193,6 +201,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-depth: 0
+
+      - name: Prepare Docker config directory
+        run: mkdir -p "$DOCKER_CONFIG"
 
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
