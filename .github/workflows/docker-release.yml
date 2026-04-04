@@ -80,9 +80,6 @@ jobs:
       id-token: write
       # Required for cache-to: type=gha (default GITHUB_TOKEN cache scope is off when permissions are narrowed).
       actions: write
-    env:
-      # Use runner temp (always writable); workspace ~/.docker can be root-owned or EACCES on some runners.
-      DOCKER_CONFIG: ${{ runner.temp }}/docker
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -92,11 +89,13 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-depth: 0
 
+      # Job-level env cannot use runner.*; set DOCKER_CONFIG via GITHUB_ENV (RUNNER_TEMP is always writable).
       - name: Prepare Docker config directory
         run: |
           set -euo pipefail
-          mkdir -p "$DOCKER_CONFIG"
-          chmod -R u+rwX "$DOCKER_CONFIG" 2>/dev/null || true
+          echo "DOCKER_CONFIG=${RUNNER_TEMP}/docker" >> "$GITHUB_ENV"
+          mkdir -p "${RUNNER_TEMP}/docker"
+          chmod -R u+rwX "${RUNNER_TEMP}/docker" 2>/dev/null || true
 
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
@@ -194,8 +193,6 @@ jobs:
       contents: read
       id-token: write
       actions: write
-    env:
-      DOCKER_CONFIG: ${{ runner.temp }}/docker
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -208,8 +205,9 @@ jobs:
       - name: Prepare Docker config directory
         run: |
           set -euo pipefail
-          mkdir -p "$DOCKER_CONFIG"
-          chmod -R u+rwX "$DOCKER_CONFIG" 2>/dev/null || true
+          echo "DOCKER_CONFIG=${RUNNER_TEMP}/docker" >> "$GITHUB_ENV"
+          mkdir -p "${RUNNER_TEMP}/docker"
+          chmod -R u+rwX "${RUNNER_TEMP}/docker" 2>/dev/null || true
 
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
@@ -306,8 +304,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    env:
-      DOCKER_CONFIG: ${{ runner.temp }}/docker
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -318,8 +314,9 @@ jobs:
       - name: Prepare Docker config directory
         run: |
           set -euo pipefail
-          mkdir -p "$DOCKER_CONFIG"
-          chmod -R u+rwX "$DOCKER_CONFIG" 2>/dev/null || true
+          echo "DOCKER_CONFIG=${RUNNER_TEMP}/docker" >> "$GITHUB_ENV"
+          mkdir -p "${RUNNER_TEMP}/docker"
+          chmod -R u+rwX "${RUNNER_TEMP}/docker" 2>/dev/null || true
 
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
