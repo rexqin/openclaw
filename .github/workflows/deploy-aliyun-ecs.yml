@@ -23,6 +23,12 @@ jobs:
       contents: read
       id-token: write
     steps:
+      # Self-hosted runners sometimes have a root-owned or unreadable ~/.gitconfig; checkout stats $HOME/.gitconfig.
+      - name: Prepare writable HOME for Git
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gha-home"
+          echo "HOME=${RUNNER_TEMP}/gha-home" >> "$GITHUB_ENV"
+
       - name: Fetch secrets from Infisical for Docker Release
         uses: Infisical/secrets-action@v1.0.15
         with:
