@@ -27,7 +27,7 @@ concurrency:
 # Infisical (export-type: env) at secret-path /${{ github.event.repository.name }} must define:
 # ACR_REGISTRY, ACR_USERNAME, ACR_PASSWORD, ACR_REPOSITORY (namespace/repo under the registry host).
 # Optional ECS deploy after manifest: set repo var ALIYUN_ECS_DEPLOY_ENABLED=true and add ECS_HOST,
-# ECS_USER, ECS_SSH_PRIVATE_KEY in Infisical (see deploy-aliyun-ecs.yml).
+# ECS_USER, ECS_SSH_PRIVATE_KEY, ECS_DEPLOY_PATH in Infisical (see deploy-aliyun-ecs.yml).
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
