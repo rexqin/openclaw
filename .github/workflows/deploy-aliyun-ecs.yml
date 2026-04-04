@@ -1,0 +1,59 @@
+# Reusable: deploy the published ACR image on an Aliyun ECS instance over SSH.
+# Prerequisites (GitHub): secret INFISICAL_OIDC_IDENTITY_ID; var INFISICAL_PROJECT_SLUG.
+# Prerequisites (Infisical, same secret-path as docker-release): ACR_REGISTRY, ACR_REPOSITORY,
+# plus ECS_HOST, ECS_USER, ECS_SSH_PRIVATE_KEY (PEM; multiline ok when stored in Infisical).
+
+name: Deploy to Aliyun ECS
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Image tag to pull on ECS (for example latest or a release version)
+        type: string
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: ${{ secrets.INFISICAL_OIDC_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG || 'prod' }}
+          export-type: env
+          secret-path: /${{ github.event.repository.name }}
+
+      - name: Resolve deploy image ref
+        id: deploy
+        shell: bash
+        env:
+          ACR_REGISTRY: ${{ env.ACR_REGISTRY }}
+          ACR_REPOSITORY: ${{ env.ACR_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${ACR_REGISTRY:-}" || -z "${ACR_REPOSITORY:-}" ]]; then
+            echo "::error::ACR_REGISTRY and ACR_REPOSITORY must be set (from Infisical)."
+            exit 1
+          fi
+          {
+            echo "image<<EOF"
+            echo "${ACR_REGISTRY}/${ACR_REPOSITORY}:${{ inputs.image_tag }}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ env.ECS_HOST }}
+          username: ${{ env.ECS_USER }}
+          key: ${{ env.ECS_SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            docker pull "${{ steps.deploy.outputs.image }}"

@@ -21,10 +21,15 @@ concurrency:
   group: ${{ github.event_name == 'workflow_dispatch' && format('docker-release-manual-{0}', inputs.tag) || format('docker-release-push-{0}', github.run_id) }}
   cancel-in-progress: false
 
+# Publishes to Aliyun ACR only (no GHCR). Required GitHub configuration:
+# - secret: INFISICAL_OIDC_IDENTITY_ID
+# - var: INFISICAL_PROJECT_SLUG
+# Infisical (export-type: env) at secret-path /${{ github.event.repository.name }} must define:
+# ACR_REGISTRY, ACR_USERNAME, ACR_PASSWORD, ACR_REPOSITORY (namespace/repo under the registry host).
+# Optional ECS deploy after manifest: set repo var ALIYUN_ECS_DEPLOY_ENABLED=true and add ECS_HOST,
+# ECS_USER, ECS_SSH_PRIVATE_KEY in Infisical (see deploy-aliyun-ecs.yml).
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   validate_manual_backfill:
@@ -69,9 +74,10 @@ jobs:
     if: ${{ always() && (github.event_name != 'workflow_dispatch' || needs.approve_manual_backfill.result == 'success') }}
     # WARNING: DO NOT REVERT THIS TO A BLACKSMITH RUNNER WITHOUT RE-VALIDATING TAG BACKFILLS.
     runs-on: ubuntu-24.04
+    environment: prod
     permissions:
-      packages: write
       contents: read
+      id-token: write
     outputs:
       digest: ${{ steps.build.outputs.digest }}
       slim-digest: ${{ steps.build-slim.outputs.digest }}
@@ -82,21 +88,31 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-depth: 0
 
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: ${{ secrets.INFISICAL_OIDC_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG || 'prod' }}
+          export-type: env
+          secret-path: /${{ github.event.repository.name }}
+
       - name: Set up Docker Builder
         uses: docker/setup-buildx-action@v4
 
-      - name: Login to GitHub Container Registry
+      - name: Login to Aliyun ACR
         uses: docker/login-action@v4
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ env.ACR_USERNAME }}
+          password: ${{ env.ACR_PASSWORD }}
 
       - name: Resolve image tags (amd64)
         id: tags
         shell: bash
         env:
-          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}
           SOURCE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
         run: |
           set -euo pipefail
@@ -186,9 +202,10 @@ jobs:
     if: ${{ always() && (github.event_name != 'workflow_dispatch' || needs.approve_manual_backfill.result == 'success') }}
     # WARNING: DO NOT REVERT THIS TO A BLACKSMITH RUNNER WITHOUT RE-VALIDATING TAG BACKFILLS.
     runs-on: ubuntu-24.04-arm
+    environment: prod
     permissions:
-      packages: write
       contents: read
+      id-token: write
     outputs:
       digest: ${{ steps.build.outputs.digest }}
       slim-digest: ${{ steps.build-slim.outputs.digest }}
@@ -199,21 +216,31 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-depth: 0
 
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: ${{ secrets.INFISICAL_OIDC_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG || 'prod' }}
+          export-type: env
+          secret-path: /${{ github.event.repository.name }}
+
       - name: Set up Docker Builder
         uses: docker/setup-buildx-action@v4
 
-      - name: Login to GitHub Container Registry
+      - name: Login to Aliyun ACR
         uses: docker/login-action@v4
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ env.ACR_USERNAME }}
+          password: ${{ env.ACR_PASSWORD }}
 
       - name: Resolve image tags (arm64)
         id: tags
         shell: bash
         env:
-          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}
           SOURCE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
         run: |
           set -euo pipefail
@@ -303,9 +330,10 @@ jobs:
     if: ${{ always() && needs.build-amd64.result == 'success' && needs.build-arm64.result == 'success' && (github.event_name != 'workflow_dispatch' || needs.approve_manual_backfill.result == 'success') }}
     # WARNING: DO NOT REVERT THIS TO A BLACKSMITH RUNNER WITHOUT RE-VALIDATING TAG BACKFILLS.
     runs-on: ubuntu-24.04
+    environment: prod
     permissions:
-      packages: write
       contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -313,18 +341,28 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-depth: 0
 
-      - name: Login to GitHub Container Registry
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: ${{ secrets.INFISICAL_OIDC_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG || 'prod' }}
+          export-type: env
+          secret-path: /${{ github.event.repository.name }}
+
+      - name: Login to Aliyun ACR
         uses: docker/login-action@v4
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ env.ACR_USERNAME }}
+          password: ${{ env.ACR_PASSWORD }}
 
       - name: Resolve manifest tags
         id: tags
         shell: bash
         env:
-          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}
           SOURCE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           IS_MANUAL_BACKFILL: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
         run: |
@@ -387,3 +425,20 @@ jobs:
           docker buildx imagetools create "${args[@]}" \
             ${{ needs.build-amd64.outputs.slim-digest }} \
             ${{ needs.build-arm64.outputs.slim-digest }}
+
+  # Runs only on tag pushes (not manual Docker backfill). Enable with repo var ALIYUN_ECS_DEPLOY_ENABLED=true.
+  deploy-aliyun-ecs:
+    name: Deploy to Aliyun ECS
+    needs: [create-manifest]
+    if: >-
+      ${{
+        always() &&
+        needs.create-manifest.result == 'success'
+      }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-aliyun-ecs.yml
+    with:
+      image_tag: latest
+    secrets: inherit
