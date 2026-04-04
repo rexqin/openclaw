@@ -81,8 +81,8 @@ jobs:
       # Required for cache-to: type=gha (default GITHUB_TOKEN cache scope is off when permissions are narrowed).
       actions: write
     env:
-      # Writable config dir for buildx/login; avoids EACCES mkdir under ~/.docker on some runners.
-      DOCKER_CONFIG: ${{ github.workspace }}/.docker
+      # Use runner temp (always writable); workspace ~/.docker can be root-owned or EACCES on some runners.
+      DOCKER_CONFIG: ${{ runner.temp }}/docker
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -93,7 +93,10 @@ jobs:
           fetch-depth: 0
 
       - name: Prepare Docker config directory
-        run: mkdir -p "$DOCKER_CONFIG"
+        run: |
+          set -euo pipefail
+          mkdir -p "$DOCKER_CONFIG"
+          chmod -R u+rwX "$DOCKER_CONFIG" 2>/dev/null || true
 
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
@@ -192,7 +195,7 @@ jobs:
       id-token: write
       actions: write
     env:
-      DOCKER_CONFIG: ${{ github.workspace }}/.docker
+      DOCKER_CONFIG: ${{ runner.temp }}/docker
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -203,7 +206,10 @@ jobs:
           fetch-depth: 0
 
       - name: Prepare Docker config directory
-        run: mkdir -p "$DOCKER_CONFIG"
+        run: |
+          set -euo pipefail
+          mkdir -p "$DOCKER_CONFIG"
+          chmod -R u+rwX "$DOCKER_CONFIG" 2>/dev/null || true
 
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
@@ -300,12 +306,20 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      DOCKER_CONFIG: ${{ runner.temp }}/docker
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-depth: 0
+
+      - name: Prepare Docker config directory
+        run: |
+          set -euo pipefail
+          mkdir -p "$DOCKER_CONFIG"
+          chmod -R u+rwX "$DOCKER_CONFIG" 2>/dev/null || true
 
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
