@@ -113,7 +113,7 @@ jobs:
         id: tags
         shell: bash
         env:
-          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}
+          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}/openclaw
           SOURCE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
         run: |
           set -euo pipefail
@@ -167,8 +167,8 @@ jobs:
           context: .
           platforms: linux/amd64
           github-token: ${{ env.GITHUB_TOKEN }}
-          # cache-from: type=gha,scope=docker-release-amd64
-          # cache-to: type=gha,mode=max,scope=docker-release-amd64
+          cache-from: type=gha,scope=docker-release-amd64
+          cache-to: type=gha,mode=max,scope=docker-release-amd64
           tags: ${{ steps.tags.outputs.value }}
           labels: ${{ steps.labels.outputs.value }}
           provenance: false
@@ -218,7 +218,7 @@ jobs:
         id: tags
         shell: bash
         env:
-          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}
+          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}/openclaw
           SOURCE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
         run: |
           set -euo pipefail
@@ -272,8 +272,8 @@ jobs:
           context: .
           platforms: linux/arm64
           github-token: ${{ env.GITHUB_TOKEN }}
-          # cache-from: type=gha,scope=docker-release-arm64
-          # cache-to: type=gha,mode=max,scope=docker-release-arm64
+          cache-from: type=gha,scope=docker-release-arm64
+          cache-to: type=gha,mode=max,scope=docker-release-arm64
           tags: ${{ steps.tags.outputs.value }}
           labels: ${{ steps.labels.outputs.value }}
           provenance: false
@@ -317,7 +317,7 @@ jobs:
         id: tags
         shell: bash
         env:
-          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}
+          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}/openclaw
           SOURCE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           IS_MANUAL_BACKFILL: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
         run: |
