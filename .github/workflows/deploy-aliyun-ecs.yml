@@ -110,7 +110,7 @@ jobs:
           host: ${{ env.ECS_HOST }}
           username: ${{ env.ECS_USER }}
           key: ${{ env.ECS_SSH_PRIVATE_KEY }}
-          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD
+          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,OPENCLAW_STACK_NAME,DEPLOY_NODE_ID,OPENCLAW_IMAGE,OPENCLAW_CONFIG_DIR,OPENCLAW_WORKSPACE_DIR,OPENCLAW_GATEWAY_PORT,OPENCLAW_BRIDGE_PORT,OPENCLAW_GATEWAY_BIND
           script: |
             set -euo pipefail
             echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
