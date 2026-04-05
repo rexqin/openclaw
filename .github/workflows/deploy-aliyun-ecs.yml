@@ -23,12 +23,6 @@ jobs:
       contents: read
       id-token: write
     steps:
-      # Self-hosted: checkout stats $HOME/.gitconfig. Run checkout BEFORE Infisical — export-type: env may overwrite HOME.
-      - name: Prepare writable HOME for Git
-        run: |
-          mkdir -p "${RUNNER_TEMP}/gha-home"
-          echo "HOME=${RUNNER_TEMP}/gha-home" >> "$GITHUB_ENV"
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -50,7 +44,7 @@ jobs:
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ vars.INFISICAL_ENV_SLUG || 'prod' }}
           export-type: env
-          secret-path: /${{ github.event.repository.name }}
+          secret-path: /${{ github.event.repository.name }}/deploy
 
       - name: Resolve deploy image ref
         id: deploy
