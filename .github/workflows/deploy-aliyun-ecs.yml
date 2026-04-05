@@ -1,6 +1,6 @@
 # Reusable: deploy the published ACR image on an Aliyun ECS instance over SSH.
 # Prerequisites (GitHub): secret INFISICAL_OIDC_IDENTITY_ID; var INFISICAL_PROJECT_SLUG.
-# Prerequisites (Infisical, same secret-path as docker-release): ACR_REGISTRY, ACR_REPOSITORY,
+# Prerequisites (Infisical): ACR_REGISTRY, ACR_REPOSITORY, ACR_USERNAME, ACR_PASSWORD (for docker login on ECS),
 # ECS_HOST, ECS_USER, ECS_SSH_PRIVATE_KEY (PEM; multiline ok when stored in Infisical),
 # ECS_DEPLOY_PATH (absolute path on the host, e.g. /opt/openclaw).
 # Optional: docker-compose interpolation vars (OPENCLAW_* , CLAUDE_* , etc.) for the generated .env.
@@ -63,6 +63,10 @@ jobs:
             echo "::error::ECS_DEPLOY_PATH must be set (from Infisical)."
             exit 1
           fi
+          if [[ -z "${ACR_USERNAME:-}" || -z "${ACR_PASSWORD:-}" ]]; then
+            echo "::error::ACR_USERNAME and ACR_PASSWORD must be set (from Infisical) for docker login on ECS."
+            exit 1
+          fi
           {
             echo "image<<EOF"
             echo "${ACR_REGISTRY}/${ACR_REPOSITORY}:${{ inputs.image_tag }}"
@@ -90,12 +94,18 @@ jobs:
 
       - name: Stop stack, pull image, compose up, prune
         uses: appleboy/ssh-action@v1.2.2
+        env:
+          ACR_REGISTRY: ${{ env.ACR_REGISTRY }}
+          ACR_USERNAME: ${{ env.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
         with:
           host: ${{ env.ECS_HOST }}
           username: ${{ env.ECS_USER }}
           key: ${{ env.ECS_SSH_PRIVATE_KEY }}
+          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD
           script: |
             set -euo pipefail
+            echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
             cd "${{ env.ECS_DEPLOY_PATH }}"
             if docker compose version >/dev/null 2>&1; then
               docker compose down --remove-orphans || true
