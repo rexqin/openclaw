@@ -99,6 +99,7 @@ jobs:
           ACR_USERNAME: ${{ env.ACR_USERNAME }}
           ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
           OPENCLAW_STACK_NAME: ${{ env.OPENCLAW_STACK_NAME }}
+          DEPLOY_NODE_ID: ${{ env.DEPLOY_NODE_ID }}
         with:
           host: ${{ env.ECS_HOST }}
           username: ${{ env.ECS_USER }}

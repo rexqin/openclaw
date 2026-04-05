@@ -57,7 +57,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - "node.id == ${DEPLOY_NODE_ID:asbkmw1re0dd5hljecwqokuvt}"
+          - "node.id == ${DEPLOY_NODE_ID:-asbkmw1re0dd5hljecwqokuvt}"
       restart_policy:
         condition: any
         delay: 5s
@@ -85,7 +85,7 @@ services:
       replicas: 0
       placement:
         constraints:
-          - "node.id == ${DEPLOY_NODE_ID:asbkmw1re0dd5hljecwqokuvt}"
+          - "node.id == ${DEPLOY_NODE_ID:-asbkmw1re0dd5hljecwqokuvt}"
       restart_policy:
         condition: any
         delay: 5s
