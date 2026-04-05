@@ -535,10 +535,12 @@ describe("scripts/docker/setup.sh", () => {
     expect(compose).toContain('"gateway"');
   });
 
-  it("keeps docker-compose CLI network namespace settings in sync", async () => {
+  it("keeps docker-compose CLI gateway URL and Swarm overlay network in sync", async () => {
     const compose = await readFile(join(repoRoot, "docker-compose.yml"), "utf8");
-    expect(compose).toContain('network_mode: "service:openclaw-gateway"');
-    expect(compose).toContain("depends_on:\n      - openclaw-gateway");
+    expect(compose).toContain("OPENCLAW_GATEWAY_URL");
+    expect(compose).toContain("ws://openclaw-gateway:18789");
+    expect(compose).toContain("ibb8-net");
+    expect(compose).not.toContain('network_mode: "service:openclaw-gateway"');
   });
 
   it("keeps docker-compose gateway token env defaults aligned across services", async () => {

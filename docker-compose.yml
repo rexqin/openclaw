@@ -1,8 +1,17 @@
+# Compose file format 3.8 — supports `docker compose` locally and `docker stack deploy` on Swarm.
+# Overlay network `ibb8-net` must exist before deploy:
+#   Swarm: docker network create --driver overlay --attachable ibb8-net
+#   Local: docker network create ibb8-net
+# Stack: docker stack deploy -c docker-compose.yml "${OPENCLAW_STACK_NAME:-openclaw}"
+
+version: "3.8"
+
 services:
   openclaw-gateway:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
     env_file:
       - .env
+
     volumes:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
@@ -14,6 +23,8 @@ services:
       # - /var/run/docker.sock:/var/run/docker.sock
     # group_add:
     #   - "${DOCKER_GID:-999}"
+    networks:
+      - ibb8-net
     ports:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
@@ -41,10 +52,18 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - "node.id == ${DEPLOY_NODE_ID:asbkmw1re0dd5hljecwqokuvt}"
+      restart_policy:
+        condition: any
+        delay: 5s
 
   openclaw-cli:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
-    network_mode: "service:openclaw-gateway"
     cap_drop:
       - NET_RAW
       - NET_ADMIN
@@ -59,5 +78,18 @@ services:
     tty: true
     init: true
     entrypoint: ["node", "dist/index.js"]
-    depends_on:
-      - openclaw-gateway
+    networks:
+      - ibb8-net
+    deploy:
+      mode: replicated
+      replicas: 0
+      placement:
+        constraints:
+          - "node.id == ${DEPLOY_NODE_ID:asbkmw1re0dd5hljecwqokuvt}"
+      restart_policy:
+        condition: any
+        delay: 5s
+
+networks:
+  ibb8-net:
+    external: true

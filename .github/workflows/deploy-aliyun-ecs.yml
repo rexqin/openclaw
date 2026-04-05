@@ -92,12 +92,13 @@ jobs:
           source: "docker-compose.yml,.env"
           target: ${{ env.ECS_DEPLOY_PATH }}
 
-      - name: Stop stack, pull image, compose up, prune
+      - name: Stop compose project, pull image, stack deploy, prune
         uses: appleboy/ssh-action@v1.2.2
         env:
           ACR_REGISTRY: ${{ env.ACR_REGISTRY }}
           ACR_USERNAME: ${{ env.ACR_USERNAME }}
           ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
+          OPENCLAW_STACK_NAME: ${{ env.OPENCLAW_STACK_NAME }}
         with:
           host: ${{ env.ECS_HOST }}
           username: ${{ env.ECS_USER }}
@@ -108,14 +109,16 @@ jobs:
             echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
             cd "${{ env.ECS_DEPLOY_PATH }}"
             if docker compose version >/dev/null 2>&1; then
-              docker compose down --remove-orphans || true
+              docker compose -f docker-compose.yml down --remove-orphans || true
             else
-              docker-compose down --remove-orphans || true
+              docker-compose -f docker-compose.yml down --remove-orphans || true
             fi
             docker pull "${{ steps.deploy.outputs.image }}"
-            if docker compose version >/dev/null 2>&1; then
-              docker compose --env-file .env up -d
-            else
-              docker-compose --env-file .env up -d
-            fi
+            set -a
+            # shellcheck disable=SC1091
+            . ./.env
+            set +a
+            export OPENCLAW_IMAGE="${{ steps.deploy.outputs.image }}"
+            STACK_NAME="${OPENCLAW_STACK_NAME:-openclaw}"
+            docker stack deploy -c docker-compose.yml --with-registry-auth "$STACK_NAME"
             docker system prune -f
