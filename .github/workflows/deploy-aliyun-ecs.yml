@@ -100,6 +100,12 @@ jobs:
           ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
           OPENCLAW_STACK_NAME: ${{ env.OPENCLAW_STACK_NAME }}
           DEPLOY_NODE_ID: ${{ env.DEPLOY_NODE_ID }}
+          OPENCLAW_IMAGE: ${{ env.OPENCLAW_IMAGE }}
+          OPENCLAW_CONFIG_DIR: ${{ env.OPENCLAW_CONFIG_DIR }}
+          OPENCLAW_WORKSPACE_DIR: ${{ env.OPENCLAW_WORKSPACE_DIR }}
+          OPENCLAW_GATEWAY_PORT: ${{ env.OPENCLAW_GATEWAY_PORT }}
+          OPENCLAW_BRIDGE_PORT: ${{ env.OPENCLAW_BRIDGE_PORT }}
+          OPENCLAW_GATEWAY_BIND: ${{ env.OPENCLAW_GATEWAY_BIND }}
         with:
           host: ${{ env.ECS_HOST }}
           username: ${{ env.ECS_USER }}
