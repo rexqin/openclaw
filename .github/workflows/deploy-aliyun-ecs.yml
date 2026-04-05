@@ -69,7 +69,7 @@ jobs:
           fi
           {
             echo "image<<EOF"
-            echo "${ACR_REGISTRY}/${ACR_REPOSITORY}:${{ inputs.image_tag }}"
+            echo "${ACR_REGISTRY}/${ACR_REPOSITORY}/openclaw:${{ inputs.image_tag }}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
