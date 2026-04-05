@@ -38,6 +38,12 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Self-hosted runners: checkout stats $HOME/.gitconfig; ensure a writable HOME first.
+      - name: Prepare writable HOME for Git
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gha-home"
+          echo "HOME=${RUNNER_TEMP}/gha-home" >> "$GITHUB_ENV"
+
       - name: Validate tag input format
         env:
           RELEASE_TAG: ${{ inputs.tag }}
@@ -83,6 +89,11 @@ jobs:
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
+      - name: Prepare writable HOME for Git
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gha-home"
+          echo "HOME=${RUNNER_TEMP}/gha-home" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -196,6 +207,11 @@ jobs:
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
+      - name: Prepare writable HOME for Git
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gha-home"
+          echo "HOME=${RUNNER_TEMP}/gha-home" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -305,6 +321,11 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: Prepare writable HOME for Git
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gha-home"
+          echo "HOME=${RUNNER_TEMP}/gha-home" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
