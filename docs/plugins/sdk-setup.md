@@ -101,7 +101,7 @@ surfaces before runtime loads.
 | `selectionDocsOmitLabel`               | `boolean`  | Show the docs path directly instead of a labeled docs link in selection copy. |
 | `selectionExtras`                      | `string[]` | Extra short strings appended in selection copy.                               |
 | `markdownCapable`                      | `boolean`  | Marks the channel as markdown-capable for outbound formatting decisions.      |
-| `showConfigured`                       | `boolean`  | Controls whether configured-channel listing surfaces show this channel.       |
+| `exposure`                             | `object`   | Channel visibility controls for setup, configured lists, and docs surfaces.   |
 | `quickstartAllowFrom`                  | `boolean`  | Opt this channel into the standard quickstart `allowFrom` setup flow.         |
 | `forceAccountBinding`                  | `boolean`  | Require explicit account binding even when only one account exists.           |
 | `preferSessionLookupForAnnounceTarget` | `boolean`  | Prefer session lookup when resolving announce targets for this channel.       |
@@ -125,11 +125,25 @@ Example:
       "selectionDocsPrefix": "Guide:",
       "selectionExtras": ["Markdown"],
       "markdownCapable": true,
+      "exposure": {
+        "configured": true,
+        "setup": true,
+        "docs": true
+      },
       "quickstartAllowFrom": true
     }
   }
 }
 ```
+
+`exposure` supports:
+
+- `configured`: include the channel in configured/status-style listing surfaces
+- `setup`: include the channel in interactive setup/configure pickers
+- `docs`: mark the channel as public-facing in docs/navigation surfaces
+
+`showConfigured` and `showInSetup` remain supported as legacy aliases. Prefer
+`exposure`.
 
 ### `openclaw.install`
 
@@ -292,15 +306,20 @@ namespaces such as `config.*` or `update.*`.
 For hot setup-only paths, prefer the narrow setup helper seams over the broader
 `plugin-sdk/setup` umbrella when you only need part of the setup surface:
 
-| Import path                        | Use it for                                                                                | Key exports                                                                                                                                                                  |
-| ---------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugin-sdk/setup-runtime`         | setup-time runtime helpers that stay available in `setupEntry` / deferred channel startup | `noteChannelLookupFailure`, `noteChannelLookupSummary`, `promptResolvedAllowFrom`, `splitSetupEntries`, `createAllowlistSetupWizardProxy`, `createDelegatedSetupWizardProxy` |
-| `plugin-sdk/setup-adapter-runtime` | environment-aware account setup adapters                                                  | `createEnvPatchedAccountSetupAdapter`                                                                                                                                        |
-| `plugin-sdk/setup-tools`           | setup/install CLI/archive/docs helpers                                                    | `formatCliCommand`, `detectBinary`, `extractArchive`, `resolveBrewExecutable`, `formatDocsLink`, `CONFIG_DIR`                                                                |
+| Import path                        | Use it for                                                                                | Key exports                                                                                                                                                                                                                                                                                  |
+| ---------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugin-sdk/setup-runtime`         | setup-time runtime helpers that stay available in `setupEntry` / deferred channel startup | `createPatchedAccountSetupAdapter`, `createEnvPatchedAccountSetupAdapter`, `createSetupInputPresenceValidator`, `noteChannelLookupFailure`, `noteChannelLookupSummary`, `promptResolvedAllowFrom`, `splitSetupEntries`, `createAllowlistSetupWizardProxy`, `createDelegatedSetupWizardProxy` |
+| `plugin-sdk/setup-adapter-runtime` | environment-aware account setup adapters                                                  | `createEnvPatchedAccountSetupAdapter`                                                                                                                                                                                                                                                        |
+| `plugin-sdk/setup-tools`           | setup/install CLI/archive/docs helpers                                                    | `formatCliCommand`, `detectBinary`, `extractArchive`, `resolveBrewExecutable`, `formatDocsLink`, `CONFIG_DIR`                                                                                                                                                                                |
 
 Use the broader `plugin-sdk/setup` seam when you want the full shared setup
 toolbox, including config-patch helpers such as
 `moveSingleAccountChannelSectionToDefaultAccount(...)`.
+
+The setup patch adapters stay hot-path safe on import. Their bundled
+single-account promotion contract-surface lookup is lazy, so importing
+`plugin-sdk/setup-runtime` does not eagerly load bundled contract-surface
+discovery before the adapter is actually used.
 
 ### Channel-owned single-account promotion
 

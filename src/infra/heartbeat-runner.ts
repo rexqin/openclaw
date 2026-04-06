@@ -11,6 +11,7 @@ import {
 } from "../agents/agent-scope.js";
 import { appendCronStyleCurrentTimeLine } from "../agents/current-time.js";
 import { resolveEffectiveMessagesConfig } from "../agents/identity.js";
+import { resolveEmbeddedSessionLane } from "../agents/pi-embedded-runner.js";
 import { DEFAULT_HEARTBEAT_FILENAME } from "../agents/workspace.js";
 import { resolveHeartbeatReplyPayload } from "../auto-reply/heartbeat-reply-payload.js";
 import {
@@ -32,7 +33,7 @@ import {
   canonicalizeMainSessionAlias,
   resolveAgentMainSessionKey,
 } from "../config/sessions/main-session.js";
-import { resolveSessionFilePath, resolveStorePath } from "../config/sessions/paths.js";
+import { resolveStorePath } from "../config/sessions/paths.js";
 import { loadSessionStore } from "../config/sessions/store-load.js";
 import { saveSessionStore, updateSessionStore } from "../config/sessions/store.js";
 import type { AgentDefaultsConfig } from "../config/types.agent-defaults.js";
@@ -297,58 +298,6 @@ async function restoreHeartbeatUpdatedAt(params: {
     }
     nextStore[sessionKey] = { ...nextEntry, updatedAt: resolvedUpdatedAt };
   });
-}
-
-/**
- * Prune heartbeat transcript entries by truncating the file back to a previous size.
- * This removes the user+assistant turns that were written during a HEARTBEAT_OK run,
- * preventing context pollution from zero-information exchanges.
- */
-async function pruneHeartbeatTranscript(params: {
-  transcriptPath?: string;
-  preHeartbeatSize?: number;
-}) {
-  const { transcriptPath, preHeartbeatSize } = params;
-  if (!transcriptPath || typeof preHeartbeatSize !== "number" || preHeartbeatSize < 0) {
-    return;
-  }
-  try {
-    const stat = await fs.stat(transcriptPath);
-    // Only truncate if the file has grown during the heartbeat run
-    if (stat.size > preHeartbeatSize) {
-      await fs.truncate(transcriptPath, preHeartbeatSize);
-    }
-  } catch {
-    // File may not exist or may have been removed - ignore errors
-  }
-}
-
-/**
- * Get the transcript file path and its current size before a heartbeat run.
- * Returns undefined values if the session or transcript doesn't exist yet.
- */
-async function captureTranscriptState(params: {
-  storePath: string;
-  sessionKey: string;
-  agentId?: string;
-}): Promise<{ transcriptPath?: string; preHeartbeatSize?: number }> {
-  const { storePath, sessionKey, agentId } = params;
-  try {
-    const store = loadSessionStore(storePath);
-    const entry = store[sessionKey];
-    if (!entry?.sessionId) {
-      return {};
-    }
-    const transcriptPath = resolveSessionFilePath(entry.sessionId, entry, {
-      agentId,
-      sessionsDir: path.dirname(storePath),
-    });
-    const stat = await fs.stat(transcriptPath);
-    return { transcriptPath, preHeartbeatSize: stat.size };
-  } catch {
-    // Session or transcript doesn't exist yet - nothing to prune
-    return {};
-  }
 }
 
 function stripLeadingHeartbeatResponsePrefix(
@@ -634,6 +583,21 @@ export async function runHeartbeatOnce(opts: {
     return { status: "skipped", reason: preflight.skipReason };
   }
   const { entry, sessionKey, storePath } = preflight.session;
+
+  // Check the resolved session lane — if it is busy, skip to avoid interrupting
+  // an active streaming turn.  The wake-layer retry (heartbeat-wake.ts) will
+  // re-schedule this wake automatically.  See #14396 (closed without merge).
+  const sessionLaneKey = resolveEmbeddedSessionLane(sessionKey);
+  const sessionLaneSize = (opts.deps?.getQueueSize ?? getQueueSize)(sessionLaneKey);
+  if (sessionLaneSize > 0) {
+    emitHeartbeatEvent({
+      status: "skipped",
+      reason: "requests-in-flight",
+      durationMs: Date.now() - startedAt,
+    });
+    return { status: "skipped", reason: "requests-in-flight" };
+  }
+
   const previousUpdatedAt = entry?.updatedAt;
 
   // When isolatedSession is enabled, create a fresh session via the same
@@ -699,7 +663,6 @@ export async function runHeartbeatOnce(opts: {
   }
 
   let runSessionKey = sessionKey;
-  let runStorePath = storePath;
   if (useIsolatedSession) {
     const isolatedKey = `${sessionKey}:heartbeat`;
     const cronSession = resolveCronSession({
@@ -712,7 +675,6 @@ export async function runHeartbeatOnce(opts: {
     cronSession.store[isolatedKey] = cronSession.sessionEntry;
     await saveSessionStore(cronSession.storePath, cronSession.store);
     runSessionKey = isolatedKey;
-    runStorePath = cronSession.storePath;
   }
 
   // Update task last run times AFTER successful heartbeat completion
@@ -806,14 +768,6 @@ export async function runHeartbeatOnce(opts: {
   };
 
   try {
-    // Capture transcript state before the heartbeat run so we can prune if HEARTBEAT_OK.
-    // For isolated sessions, capture the isolated transcript (not the main session's).
-    const transcriptState = await captureTranscriptState({
-      storePath: runStorePath,
-      sessionKey: runSessionKey,
-      agentId,
-    });
-
     const heartbeatModelOverride = heartbeat?.model?.trim() || undefined;
     const suppressToolErrorWarnings = heartbeat?.suppressToolErrorWarnings === true;
     const bootstrapContextMode: "lightweight" | undefined =
@@ -841,8 +795,7 @@ export async function runHeartbeatOnce(opts: {
         sessionKey,
         updatedAt: previousUpdatedAt,
       });
-      // Prune the transcript to remove HEARTBEAT_OK turns
-      await pruneHeartbeatTranscript(transcriptState);
+
       const okSent = await maybeSendHeartbeatOk();
       emitHeartbeatEvent({
         status: "ok-empty",
@@ -878,8 +831,7 @@ export async function runHeartbeatOnce(opts: {
         sessionKey,
         updatedAt: previousUpdatedAt,
       });
-      // Prune the transcript to remove HEARTBEAT_OK turns
-      await pruneHeartbeatTranscript(transcriptState);
+
       const okSent = await maybeSendHeartbeatOk();
       emitHeartbeatEvent({
         status: "ok-token",
@@ -916,8 +868,7 @@ export async function runHeartbeatOnce(opts: {
         sessionKey,
         updatedAt: previousUpdatedAt,
       });
-      // Prune the transcript to remove duplicate heartbeat turns
-      await pruneHeartbeatTranscript(transcriptState);
+
       emitHeartbeatEvent({
         status: "skipped",
         reason: "duplicate",

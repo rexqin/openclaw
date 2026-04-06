@@ -24,6 +24,11 @@ host policy sources, and the effective result.
 If the companion app UI is **not available**, any request that requires a prompt is
 resolved by the **ask fallback** (default: deny).
 
+Native chat approval clients can also expose channel-specific affordances on the
+pending approval message. For example, Matrix can seed reaction shortcuts on the
+approval prompt (`✅` allow once, `❌` deny, and `♾️` allow always when available)
+while still leaving the `/approve ...` commands in the message as a fallback.
+
 ## Where it applies
 
 Exec approvals are enforced locally on the execution host:
@@ -108,7 +113,8 @@ Important distinction:
 
 - `tools.exec.host=auto` chooses where exec runs: sandbox when available, otherwise gateway.
 - YOLO chooses how host exec is approved: `security=full` plus `ask=off`.
-- `auto` does not let a tool call override a sandboxed session to `gateway` or `node`. If you want a different host, set `tools.exec.host` or use `/exec host=...` explicitly.
+- In YOLO mode, OpenClaw does not add a separate heuristic command-obfuscation approval gate on top of the configured host exec policy.
+- `auto` does not make gateway routing a free override from a sandboxed session. A per-call `host=node` request is allowed from `auto`, and `host=gateway` is only allowed from `auto` when no sandbox runtime is active. If you want a stable non-auto default, set `tools.exec.host` or use `/exec host=...` explicitly.
 
 If you want a more conservative setup, tighten either layer back to `allowlist` / `on-miss`
 or `deny`.
@@ -509,6 +515,11 @@ Some channels can also act as native approval clients. Native clients add approv
 fanout, and channel-specific interactive approval UX on top of the shared same-chat `/approve`
 flow.
 
+When native approval cards/buttons are available, that native UI is the primary
+agent-facing path. The agent should not also echo a duplicate plain chat
+`/approve` command unless the tool result says chat approvals are unavailable or
+manual approval is the only remaining path.
+
 Generic model:
 
 - host exec policy still decides whether exec approval is required
@@ -518,7 +529,8 @@ Generic model:
 Native approval clients auto-enable DM-first delivery when all of these are true:
 
 - the channel supports native approval delivery
-- approvers can be resolved from explicit `execApprovals.approvers` or existing owner config
+- approvers can be resolved from explicit `execApprovals.approvers` or that
+  channel's documented fallback sources
 - `channels.<channel>.execApprovals.enabled` is unset or `"auto"`
 
 Set `enabled: false` to disable a native approval client explicitly. Set `enabled: true` to force
@@ -540,7 +552,8 @@ Shared behavior:
   for same-chat `/approve`
 - when a native approval client auto-enables, the default native delivery target is approver DMs
 - for Discord and Telegram, only resolved approvers can approve or deny
-- Discord and Telegram approvers can be explicit (`execApprovals.approvers`) or inferred from existing owner config (`allowFrom`, plus direct-message `defaultTo` where supported)
+- Discord approvers can be explicit (`execApprovals.approvers`) or inferred from `commands.ownerAllowFrom`
+- Telegram approvers can be explicit (`execApprovals.approvers`) or inferred from existing owner config (`allowFrom`, plus direct-message `defaultTo` where supported)
 - Slack approvers can be explicit (`execApprovals.approvers`) or inferred from `commands.ownerAllowFrom`
 - Slack native buttons preserve approval id kind, so `plugin:` ids can resolve plugin approvals
   without a second Slack-local fallback layer
