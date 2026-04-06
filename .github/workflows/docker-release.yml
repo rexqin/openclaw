@@ -171,6 +171,10 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-release-amd64
           tags: ${{ steps.tags.outputs.value }}
           labels: ${{ steps.labels.outputs.value }}
+          build-args: |
+            OPENCLAW_INSTALL_BROWSER=${{ env.OPENCLAW_INSTALL_BROWSER }}
+            OPENCLAW_DOCKER_APT_PACKAGES=${{ env.OPENCLAW_DOCKER_APT_PACKAGES }}
+
           provenance: false
           push: true
 
@@ -276,6 +280,10 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-release-arm64
           tags: ${{ steps.tags.outputs.value }}
           labels: ${{ steps.labels.outputs.value }}
+          build-args: |
+            OPENCLAW_INSTALL_BROWSER=${{ env.OPENCLAW_INSTALL_BROWSER }}
+            OPENCLAW_DOCKER_APT_PACKAGES=${{ env.OPENCLAW_DOCKER_APT_PACKAGES }}
+
           provenance: false
           push: true
 
