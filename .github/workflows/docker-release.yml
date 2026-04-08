@@ -354,6 +354,9 @@ jobs:
 
       - name: Create and push default manifest
         shell: bash
+        env:
+          IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}/openclaw
+          SOURCE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
         run: |
           set -euo pipefail
           mapfile -t tags <<< "${{ steps.tags.outputs.value }}"
@@ -362,9 +365,26 @@ jobs:
             [ -z "$tag" ] && continue
             args+=("-t" "$tag")
           done
+
+          amd64_source=""
+          arm64_source=""
+          if [[ "${SOURCE_REF}" == "refs/heads/main" ]]; then
+            amd64_source="${IMAGE}:main-amd64"
+            arm64_source="${IMAGE}:main-arm64"
+          elif [[ "${SOURCE_REF}" == refs/tags/v* ]]; then
+            version="${SOURCE_REF#refs/tags/v}"
+            amd64_source="${IMAGE}:${version}-amd64"
+            arm64_source="${IMAGE}:${version}-arm64"
+          fi
+
+          if [[ -z "$amd64_source" || -z "$arm64_source" ]]; then
+            echo "::error::Unable to resolve arch image sources for ${SOURCE_REF}"
+            exit 1
+          fi
+
           docker buildx imagetools create "${args[@]}" \
-            ${{ needs.build-amd64.outputs.digest }} \
-            ${{ needs.build-arm64.outputs.digest }}
+            "$amd64_source" \
+            "$arm64_source"
 
   # Runs only on tag pushes (not manual Docker backfill). Enable with repo var ALIYUN_ECS_DEPLOY_ENABLED=true.
   deploy-aliyun-ecs:

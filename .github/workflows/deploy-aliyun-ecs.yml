@@ -128,4 +128,11 @@ jobs:
             export OPENCLAW_IMAGE="${{ steps.deploy.outputs.image }}"
             STACK_NAME="${OPENCLAW_STACK_NAME:-openclaw}"
             docker stack deploy -c docker-compose.yml --with-registry-auth "$STACK_NAME"
+
+              
+              TARGET_SERVICE="${STACK_NAME}_openclaw-gateway"
+              docker service update --with-registry-auth --force "$TARGET_SERVICE"
+              
+              TARGET_SERVICE="${STACK_NAME}_openclaw-cli"
+              docker service update --with-registry-auth --force "$TARGET_SERVICE"
             docker system prune -f
