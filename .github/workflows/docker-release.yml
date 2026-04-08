@@ -298,11 +298,6 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Prepare writable HOME for Git
-        run: |
-          mkdir -p "${RUNNER_TEMP}/gha-home"
-          echo "HOME=${RUNNER_TEMP}/gha-home" >> "$GITHUB_ENV"
-
       - name: Checkout
         uses: actions/checkout@v6
         with:
