@@ -309,13 +309,6 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-depth: 0
 
-      - name: Prepare Docker config directory
-        run: |
-          set -euo pipefail
-          echo "DOCKER_CONFIG=${RUNNER_TEMP}/docker" >> "$GITHUB_ENV"
-          mkdir -p "${RUNNER_TEMP}/docker"
-          chmod -R u+rwX "${RUNNER_TEMP}/docker" 2>/dev/null || true
-
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
         with:
