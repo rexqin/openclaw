@@ -283,6 +283,7 @@ jobs:
           build-args: |
             OPENCLAW_INSTALL_BROWSER=${{ env.OPENCLAW_INSTALL_BROWSER }}
             OPENCLAW_DOCKER_APT_PACKAGES=${{ env.OPENCLAW_DOCKER_APT_PACKAGES }}
+            OPENCLAW_EXTENSIONS=${{ env.OPENCLAW_EXTENSIONS }}
 
           provenance: false
           push: true
