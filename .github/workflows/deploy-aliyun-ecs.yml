@@ -115,12 +115,6 @@ jobs:
             set -euo pipefail
             echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
             cd "${{ env.ECS_DEPLOY_PATH }}"
-            if docker compose version >/dev/null 2>&1; then
-              docker compose -f docker-compose.yml down --remove-orphans || true
-            else
-              docker-compose -f docker-compose.yml down --remove-orphans || true
-            fi
-            docker pull "${{ steps.deploy.outputs.image }}"
             set -a
             # shellcheck disable=SC1091
             . ./.env
@@ -130,9 +124,9 @@ jobs:
             docker stack deploy -c docker-compose.yml --with-registry-auth "$STACK_NAME"
 
               
-              TARGET_SERVICE="${STACK_NAME}_openclaw-gateway"
-              docker service update --with-registry-auth --force "$TARGET_SERVICE"
+            TARGET_SERVICE="${STACK_NAME}_openclaw-gateway"
+            docker service update --with-registry-auth --force "$TARGET_SERVICE"
               
-              TARGET_SERVICE="${STACK_NAME}_openclaw-cli"
-              docker service update --with-registry-auth --force "$TARGET_SERVICE"
+            TARGET_SERVICE="${STACK_NAME}_openclaw-cli"
+            docker service update --with-registry-auth --force "$TARGET_SERVICE"
             docker system prune -f
